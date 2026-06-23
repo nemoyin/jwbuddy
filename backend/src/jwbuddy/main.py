@@ -12,11 +12,12 @@ def init_tools():
 
     Called once at startup before any requests are handled.
     """
-    # Tool registration will happen here as tools are implemented.
-    # Example:
-    # from jwbuddy.tools.registry import registry
-    # registry.register(SomeTool())
-    pass
+    from jwbuddy.tools.sql_query import SQLQueryTool
+    from jwbuddy.llm.gateway import gateway
+    from jwbuddy.tools.registry import registry
+
+    tool = SQLQueryTool(llm_gateway=gateway, datasource="default")
+    registry.register(tool)
 
 
 @asynccontextmanager
