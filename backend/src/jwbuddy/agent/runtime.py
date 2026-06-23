@@ -4,6 +4,7 @@ from typing import AsyncIterator
 from jwbuddy.llm.backends import LLMBackend
 from jwbuddy.tools.registry import ToolRegistry
 from jwbuddy.agent.memory import ConversationMemory
+from jwbuddy.security.audit import audit_logger
 
 SYSTEM_PROMPT = """你是 JWBuddy，纪检监察智能助手。
 你可以使用工具来帮助用户查询和分析数据。
@@ -67,6 +68,10 @@ class AgentRuntime:
 
             # Step 2: Execute tool
             yield {"type": "tool_call", "name": tool_call["name"], "args": tool_call["args"]}
+            audit_logger.log(
+                action=f"tool_call:{tool_call['name']}",
+                detail=f"args: {json.dumps(tool_call['args'], ensure_ascii=False)}",
+            )
             tool_result = await self.tools.execute(tool_name=tool_call["name"], **tool_call["args"])
 
             if tool_result.success:
