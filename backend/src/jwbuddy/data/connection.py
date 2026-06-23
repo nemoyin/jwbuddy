@@ -1,7 +1,17 @@
 from __future__ import annotations
 
+import re
+
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
+
+
+def assert_select_only(sql: str) -> bool:
+    """Strict check: query must start with SELECT (after comments)"""
+    cleaned = re.sub(r'/\*.*?\*/', '', sql, flags=re.DOTALL)
+    cleaned = re.sub(r'--.*$', '', cleaned, flags=re.MULTILINE)
+    cleaned = cleaned.strip()
+    return cleaned.upper().startswith("SELECT")
 
 
 class DatabaseManager:
@@ -29,6 +39,8 @@ class DatabaseManager:
         engine = self._engines.get(name)
         if not engine:
             raise ValueError(f"Unknown datasource: {name}")
+        if not assert_select_only(sql):
+            raise ValueError("Security Error: Only SELECT queries are allowed")
         async with engine.connect() as conn:
             result = await conn.execute(sa.text(sql))
             rows = result.fetchall()
@@ -37,6 +49,11 @@ class DatabaseManager:
 
     def list_connections(self) -> list[str]:
         return list(self._engines.keys())
+
+    async def dispose_all(self):
+        for name, engine in self._engines.items():
+            await engine.dispose()
+        self._engines.clear()
 
 
 db_manager = DatabaseManager()

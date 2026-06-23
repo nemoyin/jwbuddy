@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import AsyncIterator
 from jwbuddy.config import settings
 from jwbuddy.llm.backends import LLMBackend, OpenAICompatibleBackend, LLMResult
 
@@ -45,12 +44,9 @@ class LLMGateway:
         tools: list[dict] | None = None,
         is_sensitive: bool = False,
         requires_reasoning: bool = False,
-        stream: bool = False,
-    ) -> LLMResult | AsyncIterator[str]:
+    ) -> LLMResult:
         backend = self.route(is_sensitive, requires_reasoning)
-        if stream:
-            return backend.chat_stream(messages, tools)
-        return await backend.chat(messages, tools, stream=False)
+        return await backend.chat(messages, tools)
 
 
 gateway = LLMGateway()

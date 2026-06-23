@@ -21,13 +21,6 @@ export async function listSessions(): Promise<SessionData[]> {
   return resp.json();
 }
 
-export function chatStream(
-  sessionId: string,
-  message: string
-): EventSource {
-  return new EventSource(`${API_BASE}/chat?session_id=${sessionId}&message=${encodeURIComponent(message)}`);
-}
-
 // Use POST-based SSE for longer messages
 export async function* streamChat(
   sessionId: string,

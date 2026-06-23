@@ -5,10 +5,11 @@ from openai import AsyncOpenAI
 
 
 class LLMResult:
-    def __init__(self, content: str, model: str, usage: dict | None = None):
+    def __init__(self, content: str, model: str, usage: dict | None = None, tool_calls: list[dict] | None = None):
         self.content = content
         self.model = model
         self.usage = usage or {}
+        self.tool_calls = tool_calls or None
 
 
 class LLMBackend(ABC):
@@ -19,8 +20,7 @@ class LLMBackend(ABC):
         self,
         messages: list[dict],
         tools: list[dict] | None = None,
-        stream: bool = False,
-    ) -> AsyncIterator[LLMResult] | LLMResult:
+    ) -> LLMResult:
         ...
 
     @abstractmethod
@@ -41,16 +41,27 @@ class OpenAICompatibleBackend(LLMBackend):
         self,
         messages: list[dict],
         tools: list[dict] | None = None,
-        stream: bool = False,
     ) -> LLMResult:
         kwargs = dict(model=self._model, messages=messages, stream=False)
         if tools:
             kwargs["tools"] = tools
         resp = await self.client.chat.completions.create(**kwargs)
+        msg = resp.choices[0].message
+        tool_calls = None
+        if msg.tool_calls:
+            tool_calls = [
+                {
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in msg.tool_calls
+            ]
         return LLMResult(
-            content=resp.choices[0].message.content or "",
+            content=msg.content or "",
             model=self._model,
             usage=resp.usage.model_dump() if resp.usage else {},
+            tool_calls=tool_calls,
         )
 
     async def chat_stream(

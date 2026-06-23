@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     sql_readonly_enabled: bool = True
     sql_max_rows: int = 1000
     sql_timeout_seconds: int = 30
+    admin_api_key: str = ""
 
     # Paths
     skills_dir: str = str(Path(__file__).parent.parent.parent / "skills")

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from jwbuddy.config import settings
 from jwbuddy.api import chat, session
 from jwbuddy.api import admin
+from jwbuddy.data.connection import db_manager
 
 
 def init_tools():
@@ -35,13 +36,14 @@ async def lifespan(app: FastAPI):
     init_tools()
     yield
     # Shutdown: close connections
+    await db_manager.dispose_all()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:1420", "tauri://localhost", "https://tauri.localhost"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

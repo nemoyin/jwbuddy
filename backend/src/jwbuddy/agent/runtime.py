@@ -26,6 +26,7 @@ class AgentRuntime:
         self.tools = tools
         self.system_prompt = system_prompt
         self.max_iterations = 10
+        self._memories: dict[str, ConversationMemory] = {}
 
     async def run(
         self,
@@ -35,8 +36,13 @@ class AgentRuntime:
         """执行 Agent 循环，产出流式事件。
         事件类型: text, tool_call, tool_result, done, error
         """
-        memory = ConversationMemory()
-        memory.add_system(self.system_prompt)
+        if session_id and session_id in self._memories:
+            memory = self._memories[session_id]
+        else:
+            memory = ConversationMemory()
+            memory.add_system(self.system_prompt)
+            if session_id:
+                self._memories[session_id] = memory
         memory.add_message("user", message)
 
         for iteration in range(self.max_iterations):
@@ -49,16 +55,43 @@ class AgentRuntime:
             )
 
             content = result.content
-            if not content.strip():
+            if not content.strip() and not result.tool_calls:
                 yield {"type": "done", "content": "没有收到有效回复。"}
                 return
 
-            # Check for tool calls in content
-            # LangChain-style: model may return JSON with tool calls
-            # For simplicity, parse response for tool invocation
             memory.add_message("assistant", content)
 
-            # Try to parse tool call from response
+            # Check for native tool_calls first (OpenAI-compatible format)
+            if result.tool_calls:
+                for tc in result.tool_calls:
+                    try:
+                        args = json.loads(tc["function"]["arguments"])
+                    except json.JSONDecodeError:
+                        continue
+                    tool_call = {"name": tc["function"]["name"], "args": args, "id": tc.get("id")}
+                    yield {"type": "tool_call", "name": tool_call["name"], "args": tool_call["args"]}
+                    audit_logger.log(
+                        action=f"tool_call:{tool_call['name']}",
+                        detail=f"args: {json.dumps(tool_call['args'], ensure_ascii=False)}",
+                    )
+                    tool_result = await self.tools.execute(tool_name=tool_call["name"], **tool_call["args"])
+
+                    if tool_result.success:
+                        result_text = json.dumps(tool_result.data, ensure_ascii=False, default=str)
+                        yield {
+                            "type": "tool_result",
+                            "name": tool_call["name"],
+                            "format": tool_result.format,
+                            "data": tool_result.data,
+                        }
+                        memory.add_message("tool", result_text)
+                    else:
+                        yield {"type": "error", "content": tool_result.error}
+                        memory.add_message("tool", f"Error: {tool_result.error}")
+                # Continue the loop for next iteration
+                continue
+
+            # Try to parse tool call from response text
             tool_call = self._parse_tool_call(content)
             if not tool_call:
                 # No tool call = final answer

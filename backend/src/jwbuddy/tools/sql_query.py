@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import json
 import re
 from jwbuddy.tools.base import BaseTool, ToolSpec, ToolResult
@@ -82,12 +83,17 @@ class SQLQueryTool(BaseTool):
 
         # Execute
         try:
-            rows = await db_manager.execute(self._datasource, sql)
+            rows = await asyncio.wait_for(
+                db_manager.execute(self._datasource, sql),
+                timeout=settings.sql_timeout_seconds,
+            )
             return ToolResult(
                 success=True,
                 data={"sql": sql, "rows": rows[: settings.sql_max_rows], "total": len(rows)},
                 format="table",
             )
+        except asyncio.TimeoutError:
+            return ToolResult(success=False, error=f"查询超时 ({settings.sql_timeout_seconds}s)")
         except Exception as e:
             return ToolResult(success=False, error=f"查询执行失败: {e}")
 

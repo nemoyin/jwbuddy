@@ -12,10 +12,20 @@ class ConversationMemory:
         self.max_tokens = max_tokens
         self._metadata: dict[str, Any] = {}
 
+    @staticmethod
+    def _estimate_tokens(text: str) -> int:
+        return len(text) // 4  # rough estimate
+
     def add_message(self, role: str, content: str):
         self.messages.append({"role": role, "content": content})
+        # Enforce max_tokens
+        while len(self.messages) > 1 and self._estimate_tokens(str(self.messages)) > self.max_tokens:
+            if len(self.messages) > 2:
+                self.messages.pop(1)
+            else:
+                break
+        # Also enforce max_messages
         if len(self.messages) > self.max_messages:
-            # Keep system prompt + recent messages
             self.messages = [self.messages[0]] + self.messages[-(self.max_messages - 1):]
 
     def add_system(self, content: str):
