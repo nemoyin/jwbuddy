@@ -1,6 +1,4 @@
 from __future__ import annotations
-import io
-import os
 from pathlib import Path
 from jwbuddy.tools.base import BaseTool, ToolSpec, ToolResult
 
@@ -26,7 +24,7 @@ class DocumentTool(BaseTool):
                     },
                     "extract_mode": {
                         "type": "string",
-                        "description": "提取模式",
+                        "description": "提取模式 (预留)",
                         "enum": ["text", "structured", "ocr"],
                         "default": "text",
                     },
@@ -37,9 +35,17 @@ class DocumentTool(BaseTool):
 
     async def execute(self, **kwargs) -> ToolResult:
         file_path = kwargs.get("file_path", "")
-        extract_mode = kwargs.get("extract_mode", "text")
 
         path = Path(file_path)
+
+        # Block path traversal via parent directory references
+        if ".." in path.parts:
+            return ToolResult(success=False, error="文件路径不允许")
+
+        # Resolve non-absolute paths within upload_dir
+        if not path.is_absolute():
+            path = (self.upload_dir / path).resolve()
+
         if not path.exists():
             return ToolResult(success=False, error=f"文件不存在: {file_path}")
 
