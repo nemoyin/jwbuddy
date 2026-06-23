@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from jwbuddy.config import settings
 from jwbuddy.api import chat, session
+from jwbuddy.api import admin
 
 
 def init_tools():
@@ -48,6 +49,7 @@ app.add_middleware(
 
 app.include_router(chat.router)
 app.include_router(session.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")
