@@ -13,11 +13,15 @@ def init_tools():
     Called once at startup before any requests are handled.
     """
     from jwbuddy.tools.sql_query import SQLQueryTool
+    from jwbuddy.tools.chart import ChartTool
     from jwbuddy.llm.gateway import gateway
     from jwbuddy.tools.registry import registry
 
     tool = SQLQueryTool(llm_gateway=gateway, datasource="default")
     registry.register(tool)
+
+    chart_tool = ChartTool(llm_gateway=gateway)
+    registry.register(chart_tool)
 
 
 @asynccontextmanager
