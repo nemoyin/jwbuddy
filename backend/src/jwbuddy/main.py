@@ -14,6 +14,7 @@ def init_tools():
     """
     from jwbuddy.tools.sql_query import SQLQueryTool
     from jwbuddy.tools.chart import ChartTool
+    from jwbuddy.tools.document import DocumentTool
     from jwbuddy.llm.gateway import gateway
     from jwbuddy.tools.registry import registry
 
@@ -22,6 +23,9 @@ def init_tools():
 
     chart_tool = ChartTool(llm_gateway=gateway)
     registry.register(chart_tool)
+
+    document_tool = DocumentTool()
+    registry.register(document_tool)
 
 
 @asynccontextmanager
